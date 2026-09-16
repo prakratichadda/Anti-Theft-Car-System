@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# Model artifacts / datasets (provide these separately, don't commit)
+*.joblib
+*.pth
+*.pt
+features.csv
+data/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Runtime-generated snapshots
+alert*.jpg
+sa_alert_snapshot.jpg
+kl_uploaded_input.jpg

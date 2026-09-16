@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """
-keyless_pipeline.py
-Extended with email alerts for attack detection.
+keyless_hackwmail.py
+
+Keyless entry relay-attack classifier (RF signal encodings -> ResNet18).
+Alerting is delegated to alert_system.send_alert() rather than sending
+email directly from here.
+
+NOTE: preprocess() and train() are not implemented yet - this module
+currently only supports predict() against a pre-trained checkpoint.
 """
 
 import argparse, os, shutil, random, json
@@ -14,9 +20,6 @@ from torchvision import transforms, datasets, models
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 # ---------- CONFIG ----------
 DEFAULT_RAW_DIR = "KeFRA Images Key-fob RKE Replay Attack"
@@ -25,35 +28,6 @@ IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp"}
 SPLIT_RATIOS = {"train": 0.8, "val": 0.1, "test": 0.1}
 RANDOM_SEED = 42
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Email config (set these as environment variables, do not hardcode credentials)
-SENDER_EMAIL = os.environ.get("ALERT_EMAIL")
-APP_PASSWORD = os.environ.get("ALERT_EMAIL_PASS")   # Gmail App Password
-ALERT_RECIPIENT = os.environ.get("ALERT_TO")
-# ----------------------------
-
-def send_email_alert(subject, body, to_email=None):
-    """Send email alert when attack is detected."""
-    to_email = to_email or ALERT_RECIPIENT
-    if not (SENDER_EMAIL and APP_PASSWORD and to_email):
-        print("❌ Email alert skipped: ALERT_EMAIL/ALERT_EMAIL_PASS/ALERT_TO not set.")
-        return
-    try:
-        msg = MIMEMultipart()
-        msg["From"] = SENDER_EMAIL
-        msg["To"] = to_email
-        msg["Subject"] = subject
-        msg.attach(MIMEText(body, "plain"))
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(SENDER_EMAIL, APP_PASSWORD)
-        server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
-        server.quit()
-
-        print(f"📩 Email sent to {to_email} → {subject}")
-    except Exception as e:
-        print("❌ Failed to send email:", str(e))
 
 # ----------------------------
 # Label inference (same as before)
@@ -67,23 +41,29 @@ def infer_label_from_folder(folder_name: str):
     return "attack"
 
 # ----------------------------
-# Preprocessing (same as before)
+# Preprocessing - NOT YET IMPLEMENTED
 # ----------------------------
 def preprocess(raw_dir: str):
-    # (preprocessing code unchanged from your version)
-    ...
+    raise NotImplementedError(
+        "preprocess() has not been implemented yet - the training pipeline for "
+        "keyless relay-attack detection is still in progress."
+    )
 
 # ----------------------------
-# Training (same as before)
+# Training - NOT YET IMPLEMENTED
 # ----------------------------
 def train(data_dir: str, epochs: int = 15, batch_size: int = 32, lr: float = 1e-4, out_path: str = "rf_model.pth"):
-    # (training code unchanged from your version)
-    ...
+    raise NotImplementedError(
+        "train() has not been implemented yet - the training pipeline for "
+        "keyless relay-attack detection is still in progress."
+    )
 
 # ----------------------------
-# PREDICT + EMAIL ALERT
+# PREDICT
 # ----------------------------
 def predict(model_path: str, img_path: str):
+    """Pure prediction function: returns a result dict. No side effects, so
+    it's safe to call from a web UI as well as the CLI below."""
     ckpt = torch.load(model_path, map_location="cpu")
     classes = ckpt.get("classes")
 
@@ -107,22 +87,16 @@ def predict(model_path: str, img_path: str):
         probs = torch.softmax(logits, dim=1).cpu().numpy()[0]
         idx = int(probs.argmax())
         prediction = classes[idx]
-        confidence = probs[idx]
+        confidence = float(probs[idx])
 
-        print("Prediction:", prediction, f"({confidence:.3f})")
-        for i, c in enumerate(classes):
-            print(f"  {c}: {probs[i]:.3f}")
-
-        # 🚨 Email alert if attack detected
-        if prediction == "attack" and confidence > 0.70:
-            subject = "🚨 ALERT: Keyless Car Attack Detected!"
-            body = f"An attack was detected with confidence {confidence:.2f}.\n\nImage: {img_path}"
-            send_email_alert(subject, body, ALERT_RECIPIENT)
-        elif prediction == "legit":
-            print("✅ Legitimate access detected, no alert sent.")
+    return {
+        "prediction": prediction,
+        "confidence": confidence,
+        "probabilities": {c: float(probs[i]) for i, c in enumerate(classes)},
+    }
 
 # ----------------------------
-# CLI (unchanged)
+# CLI
 # ----------------------------
 def main():
     parser = argparse.ArgumentParser()
@@ -144,7 +118,20 @@ def main():
     elif args.mode == "predict":
         if args.img is None:
             raise SystemExit("For predict mode you must supply --img path/to/image")
-        predict(args.model, args.img)
+        result = predict(args.model, args.img)
+        print("Prediction:", result["prediction"], f"({result['confidence']:.3f})")
+        for c, p in result["probabilities"].items():
+            print(f"  {c}: {p:.3f}")
+
+        if result["prediction"] == "attack" and result["confidence"] > 0.70:
+            from alert_system import send_alert
+            send_alert(
+                title="Keyless Car Attack Detected!",
+                messages=[f"Confidence: {result['confidence']:.2f}", f"Image: {args.img}"],
+                level="high",
+            )
+        else:
+            print("✅ Legitimate access detected, no alert sent.")
 
 if __name__ == "__main__":
     main()

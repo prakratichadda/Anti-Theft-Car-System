@@ -1,0 +1,18 @@
+# CPU-only PyTorch wheels - much smaller download than the default CUDA
+# wheels, which matters on Streamlit Cloud's free tier (build size / RAM).
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+streamlit
+opencv-python-headless
+numpy
+pandas
+scikit-learn
+joblib
+seaborn
+matplotlib
+Pillow
+tqdm
+requests
+torch
+torchvision
+ultralytics

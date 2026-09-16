@@ -89,3 +89,30 @@ Low false positives
 Scalable and real-world deployable
 
 Hackathon-ready innovation
+
+🖥️ Running the Demo
+
+A single Streamlit app (app.py) wraps all three pipelines behind one shell with a tab per module.
+
+Local:
+
+pip install -r requirements.txt
+streamlit run app.py
+
+Set alert credentials as environment variables before running (never hardcode them):
+
+ALERT_EMAIL, ALERT_EMAIL_PASS (Gmail App Password), ALERT_TO — required for email alerts
+
+TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM, TWILIO_TO — optional, for SMS
+
+TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID — optional, for Telegram
+
+Deploying to Streamlit Cloud (share.streamlit.io): push to your fork, point Streamlit Cloud at app.py, then add the variables above under the app's Settings → Secrets — do not commit them to the repo.
+
+⚠️ Known Limitations
+
+Keyless relay-attack module (keyless_hackwmail.py): only predict() against a pre-trained checkpoint (rf_model.pth) is implemented. preprocess() and train() are not built yet — the training pipeline for this module is still in progress.
+
+Driver fingerprinting (driver_predict.py) and the keyless module both require a pre-trained artifact (driver_fingerprint.joblib / rf_model.pth respectively) that isn't included in this repo — train one locally or provide it separately.
+
+Loitering tracking in suspicious_detection.py uses in-process state shared across whoever is using a given running instance, and a single webcam "snapshot" (rather than a continuous video stream) won't reliably trigger the loitering check — the pose and group-proximity checks work on single frames.
