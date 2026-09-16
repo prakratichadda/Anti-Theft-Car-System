@@ -1,3 +1,4 @@
+import os
 import cv2
 import time
 import numpy as np
@@ -8,14 +9,17 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 
 # ----------------------------
-# Gmail Alert System
+# Gmail Alert System (set these as environment variables, do not hardcode credentials)
 # ----------------------------
-EMAIL_SENDER = "REDACTED_SENDER_EMAIL"       # <-- change this
-EMAIL_PASS = "REDACTED_APP_PASSWORD"          # <-- your App Password
-EMAIL_TO = "REDACTED_RECIPIENT_EMAIL"    # <-- change this
+EMAIL_SENDER = os.environ.get("ALERT_EMAIL")
+EMAIL_PASS = os.environ.get("ALERT_EMAIL_PASS")
+EMAIL_TO = os.environ.get("ALERT_TO")
 
 def send_snapshot_alert_from_frame(title, messages, frame, image_path="alert.jpg", level="high"):
     """Send an email with attached snapshot when suspicious activity is detected"""
+    if not (EMAIL_SENDER and EMAIL_PASS and EMAIL_TO):
+        print("❌ Email alert skipped: ALERT_EMAIL/ALERT_EMAIL_PASS/ALERT_TO not set.")
+        return
     try:
         # Save the current frame as an image
         cv2.imwrite(image_path, frame)

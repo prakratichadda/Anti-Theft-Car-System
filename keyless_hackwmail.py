@@ -26,14 +26,18 @@ SPLIT_RATIOS = {"train": 0.8, "val": 0.1, "test": 0.1}
 RANDOM_SEED = 42
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Email config (⚠️ Replace with your details)
-SENDER_EMAIL = "REDACTED_SENDER_EMAIL"
-APP_PASSWORD = "REDACTED_APP_PASSWORD"   # Gmail App Password
-ALERT_RECIPIENT = "REDACTED_RECIPIENT_EMAIL"
+# Email config (set these as environment variables, do not hardcode credentials)
+SENDER_EMAIL = os.environ.get("ALERT_EMAIL")
+APP_PASSWORD = os.environ.get("ALERT_EMAIL_PASS")   # Gmail App Password
+ALERT_RECIPIENT = os.environ.get("ALERT_TO")
 # ----------------------------
 
-def send_email_alert(subject, body, to_email=ALERT_RECIPIENT):
+def send_email_alert(subject, body, to_email=None):
     """Send email alert when attack is detected."""
+    to_email = to_email or ALERT_RECIPIENT
+    if not (SENDER_EMAIL and APP_PASSWORD and to_email):
+        print("❌ Email alert skipped: ALERT_EMAIL/ALERT_EMAIL_PASS/ALERT_TO not set.")
+        return
     try:
         msg = MIMEMultipart()
         msg["From"] = SENDER_EMAIL
